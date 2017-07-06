@@ -3,7 +3,6 @@ from numpy import *
 def distEclud(vecA, vecB):
     return sqrt(sum(power(vecA - vecB, 2)))
 
-
 def randCent(dataSet, k):
     # get data set column count
     n = shape(dataSet)[1]

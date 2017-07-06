@@ -24,59 +24,34 @@ class TestGenerator(object):
         self.fetchConn.close()
 
     def getTestData(self):
-        testCount = '60'
+        testCount = 60
         dataSet = []
+        codeSet = []
         for name in list(self.alreadylist.name):
-            selectQuery = "select * from " + name + " order by 'date' desc limit " + testCount + " offset 0"
+            selectQuery = "select * from %s order by date desc limit %d offset 0" % (name, testCount)
             result = pd.read_sql(selectQuery, self.fetchConn)
-            if len(result) < int(testCount):
+            if len(result) < testCount:
                 continue
 
-            # get average array
+            codeSet.append(result['code'][0])
+            # get average array open close high low
             ave = []
-            for line in range(int(testCount)):
+            for line in range(testCount):
                 ave.append((result['open'][line] + result['close'][line]) / 2)
 
-            # get array every 3 day
-            adj = []
-            i = 0
-            value = 0
-            for meanPrice in ave:
-                if i > 2:
-                    adj.append(value / 3)
-                    value = 0
-                    i = 0
-                value += meanPrice
-                i += 1
+            filter = []
+            minAve = min(ave)
+            rangeAve = max(ave) - minAve
+            for line in ave:
+                filter.append((line - minAve) / rangeAve * 100)
 
-            # get stander array value from 0 - 1
-            standArray = []
-            maxV = max(adj)
-            minV = min(adj)
-            div = maxV - minV
-            for v in adj:
-                standArray.append((v - minV) / div)
-
-            dataSet.append(standArray)
-        return dataSet
-
-    def showPosXHisTab(self, pos):
-        name = list(self.alreadylist.name)[pos]
-        selectQuery = "select * from " + name + " order by 'date' desc limit 90 offset 0"
-        result = pd.read_sql(selectQuery, self.fetchConn)
-        prices = list(result['close'])
-        code = result['code'][pos]
-        maxP = max(prices)
-        minP = min(prices)
-        ave = (maxP + minP) / 2
-        maxY = ave * 1.5
-        minY = ave * 0.5
-
-        plt.plot(range(len(prices)), prices, 'r')
-        plt.xlabel('date')
-        plt.ylabel('price')
-
-        plt.ylim(minY, maxY)
-        plt.title(code)
-        plt.legend()
-        plt.show()
+            element = []
+            value = []
+            for minK in filter:
+                value.append(minK)
+                if len(value) == 3:
+                    k = (value[2] - value[0]) / 2
+                    value = []
+                    element.append(k)
+            dataSet.append(element)
+        return dataSet, codeSet
