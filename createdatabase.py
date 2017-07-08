@@ -2,6 +2,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from sqlalchemy import create_engine
 from datetime import datetime as dt
 import pandas as pd
+import numpy as np
 import traceback
 import tushare as ts
 import sqlite3
@@ -56,8 +57,15 @@ class MakeDataBase(object):
         tabName = self.historyTabPrefx + code
         if tabName not in list(self.alreadylist.name):
             try:
-                data = ts.get_k_data(code, start='2014-01-01')
+                data = ts.get_k_data(code, start='2013-11-20')
                 engine = create_engine('sqlite:///' + self.historyDBName, echo=False)
+                # cal k line
+                ma_list = [5, 10, 21, 30]
+                for ma in ma_list:
+                    data['MA_' + str(ma)] = pd.Series.rolling(data.close, ma).mean()
+                # del invalid index
+                indexs = list(data[np.isnan(data['MA_' + str(30)])].index)
+                data = data.drop(indexs)
                 data.to_sql(tabName, engine, if_exists='replace', index=False)
                 print 'save ' + tabName
             except:
@@ -83,6 +91,13 @@ class MakeDataBase(object):
                     try:
                         data = ts.get_k_data(code, start=df.ix[-1].name[:10])
                         engine = create_engine('sqlite:///' + self.historyDBName, echo=False)
+                        # cal k line
+                        ma_list = [5, 10, 21, 30]
+                        for ma in ma_list:
+                            data['MA_' + str(ma)] = pd.Series.rolling(data.close, ma).mean()
+                        # del invalid index
+                        indexs = list(data[np.isnan(data['MA_' + str(30)])].index)
+                        data = data.drop(indexs)
                         data.to_sql(tabName, engine, if_exists='append', index=False)
                         print 'update success ' + tabName
                     except:
@@ -111,3 +126,4 @@ def updateHistoryData():
 def cleanifyHistoryData():
     make = MakeDataBase()
     make.cleanifyData()
+
