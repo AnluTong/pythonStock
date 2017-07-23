@@ -1,6 +1,8 @@
-import averageLineStrategy as als
-import pandas as pd
 import sqlite3
+
+import pandas as pd
+
+import averageLineStrategy as als
 
 
 class TestGenerator(object):
@@ -13,7 +15,7 @@ class TestGenerator(object):
         self.errorList = []
 
         # get all table in history db
-        self.fetchConn = sqlite3.connect(self.historyDBName)
+        self.fetchConn = sqlite3.connect(self.historyDBName, check_same_thread=False)
         fetchQuery = "select name from sqlite_master where type='table' order by name"
         self.alreadylist = pd.read_sql(fetchQuery, self.fetchConn)
 
@@ -54,21 +56,47 @@ class TestGenerator(object):
         return dataSet, codeSet
 
     def getCloseAndAverageData(self, code):
-            selectQuery = "select close,MA_5,MA_21,date from %s" % code
-            result = pd.read_sql(selectQuery, self.fetchConn)
-            # need at least 40 days
-            if len(result) < 40:
-                return
-            closeData = list(result.close)
-            aveData = list(result.MA_5)
-            dateData = list(result.date)
-            ave21Data = list(result.MA_21)
-            if len(closeData) != len(aveData) and len(closeData) != len(dateData) and len(closeData) != len(ave21Data):
-                return
-            singleCodeData = []
-            for i in range(len(closeData)):
-                singleCodeData.append([closeData[i], aveData[i], ave21Data[i], dateData[i]])
-            result = als.averageLineStratey(singleCodeData)
-            for p in result:
-                print p
-                print "\n"
+        selectQuery = "select close,MA_5,MA_21,date from %s" % code
+        result = pd.read_sql(selectQuery, self.fetchConn)
+        # need at least 40 days
+        if len(result) < 40:
+            return
+        closeData = list(result.close)
+        aveData = list(result.MA_5)
+        dateData = list(result.date)
+        ave21Data = list(result.MA_21)
+        if len(closeData) != len(aveData) and len(closeData) != len(dateData) and len(closeData) != len(ave21Data):
+            return
+        singleCodeData = []
+        for i in range(len(closeData)):
+            singleCodeData.append([closeData[i], aveData[i], ave21Data[i], dateData[i]])
+        result = als.averageLineStratey(singleCodeData)
+        for p in result:
+            print p
+            print "\n"
+
+    def contains_code(self, code):
+        return code in list(self.alreadylist.name)
+
+    def get_all_data(self, code):
+        selectQuery = "select * from %s" % code
+        result = pd.read_sql(selectQuery, self.fetchConn)
+        response = []
+        for i in xrange(len(result)):
+            line = {}
+            for name in result:
+                line[name] = result[name][i]
+            response.append(line)
+        return response
+
+    # for example
+    # 'select close,MA_5 from code600552'
+    def get_sql_data(self, sql):
+        result = pd.read_sql(sql, self.fetchConn)
+        response = []
+        for i in xrange(len(result)):
+            line = {}
+            for name in result:
+                line[name] = result[name][i]
+            response.append(line)
+        return response
